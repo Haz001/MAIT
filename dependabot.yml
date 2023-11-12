@@ -1,0 +1,8 @@
+# dependabot.yml for python packages
+
+version: 2
+updates:
+    - package-ecosystem: "pip"
+      directory: "/"
+      schedule:
+          interval: "daily"

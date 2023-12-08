@@ -10,7 +10,9 @@ class threat_intel_platform_intelligence():
 
     def query_domain_ssl_config(self, domain): 
         try: 
-            request_url = self.url + 'sslConfiguration?domainName=' + domain + '&apiKey=' + self.key
+            request_url = (
+                f'{self.url}sslConfiguration?domainName={domain}&apiKey={self.key}'
+            )
             response = requests.get(request_url)
             report = response.json()
         except Exception as error:
@@ -20,7 +22,7 @@ class threat_intel_platform_intelligence():
 
     def query_domain_ssl_cert_chain(self, domain): 
         try: 
-            request_url = self.url + 'sslCertificatesChain?domainName=' + domain + '&apiKey=' + self.key
+            request_url = f'{self.url}sslCertificatesChain?domainName={domain}&apiKey={self.key}'
             response = requests.get(request_url)
             report = response.json()
         except Exception as error:

@@ -9,12 +9,12 @@ class securitytrails_intelligence():
 
     def get_dns_records(self, domain): 
         try: 
-            request_url = self.request_url + 'domain/' + domain
+            request_url = f'{self.request_url}domain/{domain}'
             headers = {
             "Accept": "application/json",
             "APIKEY": self.key
             }
-            
+
             response = requests.get(url=request_url, headers=headers)
             report = response.json()
 

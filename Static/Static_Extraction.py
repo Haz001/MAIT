@@ -8,9 +8,7 @@ class StaticAnalysis:
     def get_strings(self): 
         r2p = r2pipe.open(self.file_path)
         r2p.cmd("e bin.hashlimit=10000M")
-        strings = r2p.cmd('aa;izz')
-
-        return strings 
+        return r2p.cmd('aa;izz') 
 
     def get_ipv4_addresses(self): 
         strings = self.get_strings()

@@ -22,23 +22,21 @@ class Static:
     def hash_256(self):
         BLOCK_SIZE = 65536 # The size of each read from the file
 
-        file_hash = hashlib.sha256() 
+        file_hash = hashlib.sha256()
         with open(self.url, 'rb') as f: 
             fb = f.read(BLOCK_SIZE) 
             while len(fb) > 0: 
                 file_hash.update(fb) 
-                fb = f.read(BLOCK_SIZE) 
-        hash256 = file_hash.hexdigest()
-        return hash256
+                fb = f.read(BLOCK_SIZE)
+        return file_hash.hexdigest()
 
     def get_all_calls(self):
-        print("retrieving ALL calls from the malware "+self.url)
+        print(f"retrieving ALL calls from the malware {self.url}")
         functions = self.r2p.cmd("aa;aflj")
-        funcs = json.loads(functions)
-        return funcs
+        return json.loads(functions)
 
     def get_api_calls(self):
-        print("retrieving API calls from the malware "+self.url)
+        print(f"retrieving API calls from the malware {self.url}")
         apis = self.r2p.cmd("aa;aaa;axtj @@ sym.*")
         apilines = apis.split('\n')
         data = []
@@ -48,63 +46,60 @@ class Static:
                 if first == 0:
                     first = 1
 
-                    data = data + line[1:-1] 
+                    data = data + line[1:-1]
                 else:
-                    data = data  + ','+ line[1:-1] 
+                    data = f'{data},{line[1:-1]}' 
 
-        data = "[" + data + "]"
-        apicalls = json.loads(data)
-        return apicalls
+        data = f"[{data}]"
+        return json.loads(data)
 
     def get_headers(self):
-        print("retrieving headers from the malware "+self.url)
+        print(f"retrieving headers from the malware {self.url}")
 
         for i in range(1, 4): 
             headers = self.r2p.cmd("aa;ij")
             try: 
                 headers = json.loads(headers)
             except Exception: 
-                print("Header extraction error has occurred" + i + "time(s)")
+                print(f"Header extraction error has occurred{i}time(s)")
             else: 
                 break
-            
+
         return headers
 
     def get_libraries(self):
-        print("retrieving libraries from the malware "+self.url)
-        libs = self.r2p.cmd("aa;ilj")
-        return libs
+        print(f"retrieving libraries from the malware {self.url}")
+        return self.r2p.cmd("aa;ilj")
 
     def get_network_ops(self):
-        print("retrieving network ops from the malware "+self.url)
+        print(f"retrieving network ops from the malware {self.url}")
 
         sa = Static_Extraction.StaticAnalysis(self.url)
         ipv4s = sa.get_ipv4_addresses()
         ipv6s = sa.get_ipv6_addresses()
         domains = sa.get_domains()
         urls = sa.get_urls()
-        #network = r2p.cmd("aa;izz")
-        #urls = re.findall("http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+", network)
-        network = ipv4s + ipv6s + domains + urls
-        #network = r2p.cmd("aa;izz")
-        #ips = re.findall(r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b", network)
-        #urls = re.findall("http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+", network)
-        #network = ips + urls
-        return network
+        return ipv4s + ipv6s + domains + urls
 
     def get_strings(self):
-        print("retrieving strings from the malware "+self.url)
-        strings = self.r2p.cmd("aaa;izj")
-        return strings
+        print(f"retrieving strings from the malware {self.url}")
+        return self.r2p.cmd("aaa;izj")
 
     def get_entropy(self): 
         try: 
             binary = pefile.PE(self.url)
-            entropy_dict = []
-            for section in binary.sections:
-                entropy_dict.append([str(section.Name).replace('\\x00', '').replace('b\'',''), hex(section.VirtualAddress),hex(section.Misc_VirtualSize), section.SizeOfRawData, section.get_entropy() ])
+            entropy_dict = [
+                [
+                    str(section.Name).replace('\\x00', '').replace('b\'', ''),
+                    hex(section.VirtualAddress),
+                    hex(section.Misc_VirtualSize),
+                    section.SizeOfRawData,
+                    section.get_entropy(),
+                ]
+                for section in binary.sections
+            ]
         except pefile.PEFormatError: 
-            entropy_dict = 'No PE DOS Header found' 
+            entropy_dict = 'No PE DOS Header found'
         return entropy_dict
 
     def get_imphash(self): 
@@ -141,19 +136,19 @@ class Static:
         return doc.info  # The "Info" metadata
 
     def mine_doc(self):
-        metadata = {}
         doc = docx.Document(self.url)
         prop = doc.core_properties
-        metadata["author"] = prop.author
-        metadata["category"] = prop.category
-        metadata["comments"] = prop.comments
-        metadata["content_status"] = prop.content_status
-        metadata["created"] = prop.created
-        metadata["identifier"] = prop.identifier
-        metadata["keywords"] = prop.keywords
-        metadata["language"] = prop.language
-        metadata["modified"] = prop.modified
-        metadata["subject"] = prop.subject
-        metadata["title"] = prop.title
-        metadata["version"] = prop.version
-        return metadata
+        return {
+            "author": prop.author,
+            "category": prop.category,
+            "comments": prop.comments,
+            "content_status": prop.content_status,
+            "created": prop.created,
+            "identifier": prop.identifier,
+            "keywords": prop.keywords,
+            "language": prop.language,
+            "modified": prop.modified,
+            "subject": prop.subject,
+            "title": prop.title,
+            "version": prop.version,
+        }

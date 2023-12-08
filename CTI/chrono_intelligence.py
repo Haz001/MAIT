@@ -35,9 +35,7 @@ class Chrono_Intelligence:
                 retlst.append((pulse['name'], pulse['created']))
                 if pulse['references']:
                     print('References')
-                    for i in pulse['references']:
-                        retlst.append(i)
-        
+                    retlst.extend(iter(pulse['references']))
         #malware bazaar
         s = self.ach.malwarebazaar_hash(urlhash)
         intel = {}
@@ -47,16 +45,14 @@ class Chrono_Intelligence:
                     for key,value in j.items():
                         if key == 'vendor_intel':
                             intel.update(value)
-        for key,value in intel.items():
-            retlst.append((key, '-', value))
+        retlst.extend((key, '-', value) for key, value in intel.items())
         return  retlst 
 
     def virustotal_dates(self, urlhash):
         scan = self.vt.virustotal_scan(urlhash)
         lst = []
-        
+
         for i in scan:
-        	if i['response_code'] != 0:
-        		for key,value in i['scans'].items():
-        			lst.append([key,  value['update']])
+            if i['response_code'] != 0:
+                lst.extend([key,  value['update']] for key, value in i['scans'].items())
         return lst

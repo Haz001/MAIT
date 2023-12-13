@@ -2,7 +2,7 @@ beautifulsoup4==4.11.1
 dnsdb==0.2.5
 dnsdb_python==1.2.4
 docx==0.2.4
-Flask==2.0.2
+Flask==2.2.5
 Flask_Cors==3.0.10
 networkx==2.6.3
 oletools==0.60

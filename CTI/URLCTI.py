@@ -20,16 +20,12 @@ class URL_CTI():
     #Extracts the tld and sld from the given URL (E.g. google.com from http://docs.google.com)
     def extract_domain(self): 
         extracted_domain = tldextract.extract(self.url)
-        tlds = extracted_domain[1] + "." + extracted_domain[2]
-
-        return tlds
+        return f"{extracted_domain[1]}.{extracted_domain[2]}"
 
     #Gets the VirusTotal scan results of an extracted domain
     def get_domain_scan_results(self): 
         tlds = self.extract_domain()
-        domain_scan_results = self.vti.virustotal_query_domain(tlds)  
-
-        return domain_scan_results
+        return self.vti.virustotal_query_domain(tlds)
     
     #Scans a URL and the extracted domain in VirusTotal and gets the reports 
     def scan_url(self): 
@@ -78,8 +74,9 @@ class URL_CTI():
         try:
             whois_info = self.vti.virustotal_v3_query_domain(self.extract_domain(), "/historical_whois")
             whois_info = whois_info[0]["data"]
-            for i in range(0, len(whois_info)): 
-                historical_whois.append(whois_info[i]["attributes"])
+            historical_whois.extend(
+                whois_info[i]["attributes"] for i in range(0, len(whois_info))
+            )
             latest_whois = whois_info[0]["attributes"]
 
             whois_info = json.loads('{"whois_information": {"latest_whois":'+json.dumps(latest_whois)+', "historical_whois":'+json.dumps(historical_whois)+'}}')
@@ -124,11 +121,17 @@ class URL_CTI():
             except KeyError:
                 detected_communicating_samples = '{"error_occurred": "No detected communicating samples"}'
         except: 
-            return "Error occurred when retrieving related malicious files: " + str(malicious_files)#json.loads(r'{"related_malicious_files": {"error_occurred": '+json.dumps(malicious_files)+'}')
+            return f"Error occurred when retrieving related malicious files: {str(malicious_files)}"
 
-        related_malicious_files = json.loads('{"related_malicious_files": {"detected_downloaded_files":'+detected_downloaded_samples+', "detected_referrer_files":'+detected_referrer_samples+', "detected_communicating_files":'+detected_communicating_samples+'}}')
-
-        return related_malicious_files
+        return json.loads(
+            '{"related_malicious_files": {"detected_downloaded_files":'
+            + detected_downloaded_samples
+            + ', "detected_referrer_files":'
+            + detected_referrer_samples
+            + ', "detected_communicating_files":'
+            + detected_communicating_samples
+            + '}}'
+        )
 
     #Gets potentially malicious URLs that are associated with the extracted domain
     def get_related_malicious_urls(self): 
@@ -137,10 +140,8 @@ class URL_CTI():
             detected_urls = json.dumps(detected_urls["detected_urls"])
         except: 
             return json.loads('{"related_malicious_urls": {"error_occurred": '+json.dumps(self.domain_scan_results)+'}}')
-        
-        related_malicious_urls = json.loads('{"related_malicious_urls":'+detected_urls+'}')
 
-        return related_malicious_urls
+        return json.loads('{"related_malicious_urls":'+detected_urls+'}')
 
     #Gets historical SSL certificates from VirusTotal for an extracted domain
     def get_vt_historical_ssl_certs(self): 
@@ -159,7 +160,7 @@ class URL_CTI():
         try: 
             domain = self.extract_domain()
             domain_extension = str(domain).split(".")[1]
-            for e in range(0,3): 
+            for _ in range(0,3):
                 try:
                     historical_ssl_certs = self.crt.get_crtsh_historical_ssl_certs(domain, domain_extension)
                     historical_ssl_certs = json.loads('{"crtsh_historical_ssl_certificates":'+historical_ssl_certs+'}')
@@ -205,13 +206,20 @@ class URL_CTI():
         try: 
             indicator_report = self.avi.get_related_pulse_indicators(self.url, 'URL')
 
-            for i in range(0, len(indicator_report)): 
-                url_indicators.append({'pulse_id': indicator_report[i]['pulse_key'], 'indicator_id': indicator_report[i]['id'], 'indicator': indicator_report[i]['indicator'], 'type': indicator_report[i]['type'], 'created_date': indicator_report[i]['created']})
-
+            url_indicators.extend(
+                {
+                    'pulse_id': indicator_report[i]['pulse_key'],
+                    'indicator_id': indicator_report[i]['id'],
+                    'indicator': indicator_report[i]['indicator'],
+                    'type': indicator_report[i]['type'],
+                    'created_date': indicator_report[i]['created'],
+                }
+                for i in range(0, len(indicator_report))
+            )
             url_indicators = json.loads('{"related_indicators_of_url":'+json.dumps(url_indicators)+'}')
         except Exception as error: 
             return json.loads('{"related_indicators_of_url": {"error_occurred": '+json.dumps('{0}'.format(error))+'}}')
-        
+
         return url_indicators
 
     #Get the domain indicators from the related AlienVault pulses of the extracted domain    
@@ -221,9 +229,16 @@ class URL_CTI():
             domain = self.extract_domain()
             indicator_report = self.avi.get_related_pulse_indicators(domain, 'domain')
 
-            for i in range(0, len(indicator_report)): 
-                domain_indicators.append({'pulse_id': indicator_report[i]['pulse_key'], 'indicator_id': indicator_report[i]['id'], 'indicator': indicator_report[i]['indicator'], 'type': indicator_report[i]['type'], 'created_date': indicator_report[i]['created']})
-
+            domain_indicators.extend(
+                {
+                    'pulse_id': indicator_report[i]['pulse_key'],
+                    'indicator_id': indicator_report[i]['id'],
+                    'indicator': indicator_report[i]['indicator'],
+                    'type': indicator_report[i]['type'],
+                    'created_date': indicator_report[i]['created'],
+                }
+                for i in range(0, len(indicator_report))
+            )
             domain_indicators = json.loads('{"related_indicators_of_domain":'+json.dumps(domain_indicators)+'}')
         except Exception as error: 
             return json.loads('{"related_indicators_of_domain": {"error_occurred": '+json.dumps('{0}'.format(error))+'}}')
@@ -246,9 +261,16 @@ class URL_CTI():
         try: 
             pulse_report = self.avi.get_related_pulse_report(self.url, 'URL')
 
-            for k in range(0, len(pulse_report)): 
-                url_pulse_info.append({'pulse_id': pulse_report[k]['id'], 'name': pulse_report[k]['name'], 'adversary': pulse_report[k]['adversary'], 'attack_ids': pulse_report[k]['attack_ids'], 'tags': pulse_report[k]['tags']})
-
+            url_pulse_info.extend(
+                {
+                    'pulse_id': pulse_report[k]['id'],
+                    'name': pulse_report[k]['name'],
+                    'adversary': pulse_report[k]['adversary'],
+                    'attack_ids': pulse_report[k]['attack_ids'],
+                    'tags': pulse_report[k]['tags'],
+                }
+                for k in range(0, len(pulse_report))
+            )
             url_pulse_info = json.dumps(url_pulse_info)
             url_pulse_info = '{"related_pulses_of_url":'+url_pulse_info+'}'
             url_pulse_info = json.loads(url_pulse_info)
@@ -264,9 +286,16 @@ class URL_CTI():
             domain = self.extract_domain()
             pulse_report = self.avi.get_related_pulse_report(domain, 'domain')
 
-            for k in range(0, len(pulse_report)): 
-                domain_pulse_info.append({'pulse_id': pulse_report[k]['id'], 'name': pulse_report[k]['name'], 'adversary': pulse_report[k]['adversary'], 'attack_ids': pulse_report[k]['attack_ids'], 'tags': pulse_report[k]['tags']})
-
+            domain_pulse_info.extend(
+                {
+                    'pulse_id': pulse_report[k]['id'],
+                    'name': pulse_report[k]['name'],
+                    'adversary': pulse_report[k]['adversary'],
+                    'attack_ids': pulse_report[k]['attack_ids'],
+                    'tags': pulse_report[k]['tags'],
+                }
+                for k in range(0, len(pulse_report))
+            )
             domain_pulse_info = json.dumps(domain_pulse_info)
             domain_pulse_info = '{"related_pulses_of_domain":'+domain_pulse_info+'}'
             domain_pulse_info = json.loads(domain_pulse_info)

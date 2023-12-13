@@ -27,12 +27,13 @@ class Create_Nav:
         advlst = []
         for i in pulses:
             if i['attack_ids']:
-                for j in i['attack_ids']:
-                    advlst.append(  {'score':1, 'techniqueID':j['id'], 'showSubtechniques': True}  )
+                advlst.extend(
+                    {'score': 1, 'techniqueID': j['id'], 'showSubtechniques': True}
+                    for j in i['attack_ids']
+                )
         return advlst
 
     def get_cuckoo_ttps(self, ttps): 
-        ttplst = []
         ttp_ids = []
         ttps = ttps['ttps']
 
@@ -41,7 +42,7 @@ class Create_Nav:
             ttp_ids = list(ttps[ttp].keys()) + ttp_ids
         print(ttp_ids)
 
-        for i in range(0, len(ttp_ids)): #FIXME: Does not highlight subtechniques 
-            ttplst.append( {'score':1, 'techniqueID':ttp_ids[i], 'showSubtechniques': True} )
-
-        return ttplst
+        return [
+            {'score': 1, 'techniqueID': ttp_ids[i], 'showSubtechniques': True}
+            for i in range(0, len(ttp_ids))
+        ]

@@ -20,7 +20,7 @@ class virustotal_intelligence():
 
     def request_get(self, url, data):
         try: 
-            for e in range(0,3): 
+            for _ in range(0,3):
                 try:
                     request = urllib.request.Request(url, bytes(data, 'utf-8') )
                     response = urllib.request.urlopen(request)
@@ -42,7 +42,7 @@ class virustotal_intelligence():
         return results     
 
     def virustotal_scan(self, hash):
-        url = self.url +'file/report'
+        url = f'{self.url}file/report'
         data = urllib.parse.urlencode({
             'resource' : hash,
             'apikey' : self.key
@@ -61,7 +61,7 @@ class virustotal_intelligence():
         return self.request_get(request_url,data)
 
     def virustotal_query_url(self, url):
-        request_url = self.url+'url/report'
+        request_url = f'{self.url}url/report'
         data = urllib.parse.urlencode({
             'resource' : url,
             'apikey' : self.key
@@ -71,9 +71,9 @@ class virustotal_intelligence():
     
     def virustotal_v3_query_url(self, scan_id): 
         try:
-            request_url = 'https://www.virustotal.com/api/v3/urls/' + scan_id
+            request_url = f'https://www.virustotal.com/api/v3/urls/{scan_id}'
             headers = {'x-apikey': self.key}
-            for e in range(0,3): 
+            for _ in range(0,3):
                 try:
                     response = requests.get(request_url, headers=headers)
                     report = response.json()
@@ -95,9 +95,9 @@ class virustotal_intelligence():
 
     def virustotal_query_ip(self, ip):
         try:
-            request_url = self.url + "ip-address/report"
+            request_url = f"{self.url}ip-address/report"
             params = {'apikey': self.key, 'ip': ip}
-            for e in range(0,3): 
+            for _ in range(0,3):
                 try:
                     response = requests.get(request_url, params=params)
                     report = response.json()
@@ -119,9 +119,9 @@ class virustotal_intelligence():
 
     def virustotal_v3_query_ip(self, IP, relationship):
         try:
-            request_url = 'https://www.virustotal.com/api/v3/ip_addresses/' + IP + relationship
+            request_url = f'https://www.virustotal.com/api/v3/ip_addresses/{IP}{relationship}'
             headers = {'x-apikey': self.key}
-            for e in range(0,3): 
+            for _ in range(0,3):
                 try:
                     response = requests.get(request_url, headers=headers)
                     report = response.json()
@@ -143,9 +143,9 @@ class virustotal_intelligence():
 
     def virustotal_query_domain(self, domain):
         try:
-            request_url = self.url +'domain/report'
+            request_url = f'{self.url}domain/report'
             params = {'apikey':self.key,'domain':domain}
-            for e in range(0,3):     
+            for _ in range(0,3):
                 try:
                     response = requests.get(request_url, params=params)
                     report = response.json()
@@ -167,9 +167,11 @@ class virustotal_intelligence():
 
     def virustotal_v3_query_domain(self, domain, relationship): 
         try:
-            request_url = 'https://www.virustotal.com/api/v3/domains/' + domain + relationship
+            request_url = (
+                f'https://www.virustotal.com/api/v3/domains/{domain}{relationship}'
+            )
             headers = {'x-apikey': self.key}
-            for e in range(0,3):         
+            for _ in range(0,3):
                 try:
                     response = requests.get(request_url, headers=headers)
                     report = response.json()

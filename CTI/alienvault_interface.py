@@ -50,7 +50,7 @@ class alienvault_intelligence:
         neoSelector = py2neo. NodeMatcher(neoGraph)
         prevnode = ''
         if neoSelector.match("SAMPLE", sha1=hash256).first():
-            print("Graph for sample %s already exists in Neo4j instance!" % hash256)
+            print(f"Graph for sample {hash256} already exists in Neo4j instance!")
         else:
             node = py2neo.Node('SAMPLE', hash = hash256 )
             neoGraph.create(node)
@@ -66,40 +66,31 @@ class alienvault_intelligence:
 
     def get_hash_pulses(self, hash256):
         results, alerts = self.query_hash(hash256)
-        pulses = results['general']['pulse_info']['pulses']
-        return pulses
+        return results['general']['pulse_info']['pulses']
 
     def get_url_pulses(self, mal_url):
         results, alerts = self.query_url(mal_url)
-        pulses = results['general']['pulse_info']['pulses']
-        return pulses
+        return results['general']['pulse_info']['pulses']
 
     def get_domain_pulses(self, mal_domain): 
         results, alerts = self.query_domain(mal_domain)
-        pulses = results['general']['pulse_info']['pulses']
-        return pulses
+        return results['general']['pulse_info']['pulses']
 
     def get_ip_pulses(self, mal_ip, type): 
         results, alerts = self.query_ip(mal_ip, type)
-        pulses = results['pulse_info']['pulses']
-        return pulses
+        return results['pulse_info']['pulses']
 
     def getValue(self, results, keys):
-        if type(keys) is list and len(keys) > 0:
-
-            if type(results) is dict:
-                key = keys.pop(0)
-                if key in results:
-                    return self.getValue(results[key], keys)
-                else:
-                    return None
-            else:
-                if type(results) is list and len(results) > 0:
-                    return self.getValue(results[0], keys)
-                else:
-                    return results
-        else:
+        if type(keys) is not list or len(keys) <= 0:
             return results
+        if type(results) is not dict:
+            return (
+                self.getValue(results[0], keys)
+                if type(results) is list and len(results) > 0
+                else results
+            )
+        key = keys.pop(0)
+        return self.getValue(results[key], keys) if key in results else None
 
     def hostname(self,hostname):
         alerts = []
@@ -108,21 +99,22 @@ class alienvault_intelligence:
         # Return nothing if it's in the whitelist
         validation = self.getValue(result, ['validation'])
         if not validation:
-            pulses = self.getValue(result, ['pulse_info', 'pulses'])
-            if pulses:
-                for pulse in pulses:
-                    if 'name' in pulse:
-                        alerts.append('In pulse: ' + pulse['name'])
-
+            if pulses := self.getValue(result, ['pulse_info', 'pulses']):
+                alerts.extend(
+                    'In pulse: ' + pulse['name']
+                    for pulse in pulses
+                    if 'name' in pulse
+                )
         result = self.otx.get_indicator_details_by_section(IndicatorTypes.DOMAIN, hostname, 'general')
         # Return nothing if it's in the whitelist
         validation = self.getValue(result, ['validation'])
         if not validation:
-            pulses = self.getValue(result, ['pulse_info', 'pulses'])
-            if pulses:
-                for pulse in pulses:
-                    if 'name' in pulse:
-                        alerts.append('In pulse: ' + pulse['name'])
+            if pulses := self.getValue(result, ['pulse_info', 'pulses']):
+                alerts.extend(
+                    'In pulse: ' + pulse['name']
+                    for pulse in pulses
+                    if 'name' in pulse
+                )
         return (result, alerts)
 
     def ip(self, ip, type):
@@ -134,12 +126,12 @@ class alienvault_intelligence:
         # Return nothing if it's in the whitelist
         validation = self.getValue(result, ['validation'])
         if not validation:
-            pulses = self.getValue(result, ['pulse_info', 'pulses'])
-            if pulses:
-                for pulse in pulses:
-                    if 'name' in pulse:
-                        alerts.append('In pulse: ' + pulse['name'])
-
+            if pulses := self.getValue(result, ['pulse_info', 'pulses']):
+                alerts.extend(
+                    'In pulse: ' + pulse['name']
+                    for pulse in pulses
+                    if 'name' in pulse
+                )
         return (result, alerts)
 
     def domain(self, domain):
@@ -151,23 +143,25 @@ class alienvault_intelligence:
             alerts.append({'google_safebrowsing': 'malicious'})
 
 
-        clamav = self.getValue( result, ['url_list', 'url_list', 'result', 'multiav','matches','clamav'])
-        if clamav:
-                alerts.append({'clamav': clamav})
+        if clamav := self.getValue(
+            result,
+            ['url_list', 'url_list', 'result', 'multiav', 'matches', 'clamav'],
+        ):
+            alerts.append({'clamav': clamav})
 
-        avast = self.getValue( result, ['url_list', 'url_list', 'result', 'multiav','matches','avast'])
-        if avast:
+        if avast := self.getValue(
+            result,
+            ['url_list', 'url_list', 'result', 'multiav', 'matches', 'avast'],
+        ):
             alerts.append({'avast': avast})
 
-        # Get the file analysis too, if it exists
-        has_analysis = self.getValue( result,  ['url_list','url_list', 'result', 'urlworker', 'has_file_analysis'])
-        if has_analysis:
+        if has_analysis := self.getValue(
+            result,
+            ['url_list', 'url_list', 'result', 'urlworker', 'has_file_analysis'],
+        ):
             file_hash = self.getValue( result,  ['url_list','url_list', 'result', 'urlworker', 'sha256'])
-            file_alerts = self.file(file_hash)
-            if file_alerts:
-                for alert in file_alerts:
-                    alerts.append(alert)
-
+            if file_alerts := self.file(file_hash):
+                alerts.extend(iter(file_alerts))
         return (result, alerts)
 
     def url(self, url):
@@ -179,23 +173,25 @@ class alienvault_intelligence:
             alerts.append({'google_safebrowsing': 'malicious'})
 
 
-        clamav = self.getValue( result, ['url_list', 'url_list', 'result', 'multiav','matches','clamav'])
-        if clamav:
-                alerts.append({'clamav': clamav})
+        if clamav := self.getValue(
+            result,
+            ['url_list', 'url_list', 'result', 'multiav', 'matches', 'clamav'],
+        ):
+            alerts.append({'clamav': clamav})
 
-        avast = self.getValue( result, ['url_list', 'url_list', 'result', 'multiav','matches','avast'])
-        if avast:
+        if avast := self.getValue(
+            result,
+            ['url_list', 'url_list', 'result', 'multiav', 'matches', 'avast'],
+        ):
             alerts.append({'avast': avast})
 
-        # Get the file analysis too, if it exists
-        has_analysis = self.getValue( result,  ['url_list','url_list', 'result', 'urlworker', 'has_file_analysis'])
-        if has_analysis:
+        if has_analysis := self.getValue(
+            result,
+            ['url_list', 'url_list', 'result', 'urlworker', 'has_file_analysis'],
+        ):
             file_hash = self.getValue( result,  ['url_list','url_list', 'result', 'urlworker', 'sha256'])
-            file_alerts = self.file(file_hash)
-            if file_alerts:
-                for alert in file_alerts:
-                    alerts.append(alert)
-
+            if file_alerts := self.file(file_hash):
+                alerts.extend(iter(file_alerts))
         # Todo: Check file page
 
         return (result, alerts)
@@ -209,28 +205,70 @@ class alienvault_intelligence:
             hash_type = IndicatorTypes.FILE_HASH_SHA1
 
         result = self.otx.get_indicator_details_full(hash_type, hash)
-        avg = self.getValue( result, ['analysis','analysis','plugins','avg','results','detection'])
-        if avg:
+        if avg := self.getValue(
+            result,
+            ['analysis', 'analysis', 'plugins', 'avg', 'results', 'detection'],
+        ):
             alerts.append({'avg': avg})
 
-        clamav = self.getValue( result, ['analysis','analysis','plugins','clamav','results','detection'])
-        if clamav:
+        if clamav := self.getValue(
+            result,
+            ['analysis', 'analysis', 'plugins', 'clamav', 'results', 'detection'],
+        ):
             alerts.append({'clamav': clamav})
 
-        avast = self.getValue( result, ['analysis','analysis','plugins','avast','results','detection'])
-        if avast:
+        if avast := self.getValue(
+            result,
+            ['analysis', 'analysis', 'plugins', 'avast', 'results', 'detection'],
+        ):
             alerts.append({'avast': avast})
 
-        microsoft = self.getValue( result, ['analysis','analysis','plugins','cuckoo','result','virustotal','scans','Microsoft','result'])
-        if microsoft:
+        if microsoft := self.getValue(
+            result,
+            [
+                'analysis',
+                'analysis',
+                'plugins',
+                'cuckoo',
+                'result',
+                'virustotal',
+                'scans',
+                'Microsoft',
+                'result',
+            ],
+        ):
             alerts.append({'microsoft': microsoft})
 
-        symantec = self.getValue( result, ['analysis','analysis','plugins','cuckoo','result','virustotal','scans','Symantec','result'])
-        if symantec:
+        if symantec := self.getValue(
+            result,
+            [
+                'analysis',
+                'analysis',
+                'plugins',
+                'cuckoo',
+                'result',
+                'virustotal',
+                'scans',
+                'Symantec',
+                'result',
+            ],
+        ):
             alerts.append({'symantec': symantec})
 
-        kaspersky = self.getValue( result, ['analysis','analysis','plugins','cuckoo','result','virustotal','scans','Kaspersky','result'])
-        if kaspersky:
+        if kaspersky := self.getValue(
+            result,
+            [
+                'analysis',
+                'analysis',
+                'plugins',
+                'cuckoo',
+                'result',
+                'virustotal',
+                'scans',
+                'Kaspersky',
+                'result',
+            ],
+        ):
             alerts.append({'kaspersky': kaspersky})
 
         suricata = self.getValue( result, ['analysis','analysis','plugins','cuckoo','result','suricata','rules','name'])
@@ -262,13 +300,6 @@ class alienvault_intelligence:
         for i in pulse_report: 
             pulse_indicators = self.otx.get_pulse_indicators(i['id'],limit = 300)
 
-            for j in pulse_indicators:
-                if j['type'] == type: 
-                    indicators.append(j)
-    
+            indicators.extend(j for j in pulse_indicators if j['type'] == type)
         indicators.sort(key = lambda x:x['created'])
-        #for i in indicators:
-            #print(i)
-            #print(i['indicator'], i['created'])
-
         return indicators

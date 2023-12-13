@@ -12,20 +12,11 @@ class DynamicAnalysis:
         self.options = {"options": ["procmemdump=yes", "memory=yes"]}
 
     def submit_sample(self): 
-        CREATE_FILE_REQUEST = self.BASE_URL + "tasks/create/file"
+        CREATE_FILE_REQUEST = f"{self.BASE_URL}tasks/create/file"
         with open(self.file_path, "rb") as sample:
             files = {"file": ("malware to be analysed", sample)}
             r = requests.post(CREATE_FILE_REQUEST, headers=self.HEADERS, files=files, data=self.options)
-        # Add code to error checking for r.status_code. 
-        #status_code = r.status_code
-        #if r.status_code == 200: else
-
-
-        task_id = str(r.json()["task_id"])
-
-        # Add code for error checking if task_id is None.
-
-        return task_id#, status_code
+        return str(r.json()["task_id"])
     
     #Function for handling if task analysis and reporting is done
     def get_task_status(self, task_id):
@@ -33,23 +24,21 @@ class DynamicAnalysis:
 
         while True: 
             time.sleep(20)
-            TASK_STATUS_REQUEST = self.BASE_URL + "tasks/view/" + task_id
+            TASK_STATUS_REQUEST = f"{self.BASE_URL}tasks/view/{task_id}"
             task_info = requests.get(TASK_STATUS_REQUEST, headers=self.HEADERS, data=self.options)
             task_status = str(task_info.json()["task"]["status"])
             timeString = time.ctime()
-            print(timeString[11:(len(timeString)-5)] + " Task status: " + task_status)
+            print(f"{timeString[11:len(timeString) - 5]} Task status: {task_status}")
             if task_status == "reported": 
                 break
-        
-        task_done = True
-        return task_done
+
+        return True
 
 
     def get_strings(self, dump):
-        print("retrieving headers from the malware "+dump)
+        print(f"retrieving headers from the malware {dump}")
         r2p = r2pipe.open(dump)
-        strings = r2p.cmd("aaa;izz")
-        return strings
+        return r2p.cmd("aaa;izz")
 
     def get_urls(self, dump): 
         strings = self.get_strings(dump)
@@ -70,14 +59,22 @@ class DynamicAnalysis:
     def get_procmemory_urls(self, task_id): 
         urls = []
         domains = []
-        for filename in os.listdir('/home/e-ews/.cuckoo/storage/analyses/'+str(task_id)+'/memory/'):
-            urls.append(self.get_urls('/home/e-ews/.cuckoo/storage/analyses/'+str(task_id)+'/memory/'+filename))
-            domains.append(self.get_domains('/home/e-ews/.cuckoo/storage/analyses/'+str(task_id)+'/memory/'+filename))
+        for filename in os.listdir(f'/home/e-ews/.cuckoo/storage/analyses/{str(task_id)}/memory/'):
+            urls.append(
+                self.get_urls(
+                    f'/home/e-ews/.cuckoo/storage/analyses/{str(task_id)}/memory/{filename}'
+                )
+            )
+            domains.append(
+                self.get_domains(
+                    f'/home/e-ews/.cuckoo/storage/analyses/{str(task_id)}/memory/{filename}'
+                )
+            )
         #urls = self.remove_unrelated_urls(urls)
         return (urls, domains)
 
     def get_netscan_ips(self, task_id): 
-        REPORT_REQUEST = self.BASE_URL + "tasks/report/" +  str(task_id)
+        REPORT_REQUEST = f"{self.BASE_URL}tasks/report/{str(task_id)}"
         report = requests.get(REPORT_REQUEST, headers=self.HEADERS, data=self.options)
 
         ips = []
@@ -90,10 +87,8 @@ class DynamicAnalysis:
         for i in range(0, netscan_length): 
             ip = report.json()["memory"]["netscan"]["data"][i]["remote_address"]
             ips.append(ip)
-        
-        ips = self.remove_unrelated_ips(ips)
 
-        return ips
+        return self.remove_unrelated_ips(ips)
 
     #Removes unrelated and duplicate URLs that are extracted from procmemory from dynamic_urls and/or from strings
     def remove_unrelated_urls(self, dynamic_urls): 

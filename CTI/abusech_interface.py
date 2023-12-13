@@ -50,21 +50,21 @@ class abusech_intelligence:
         return self.request_get(self.url_mb, data)
 
     def urlhaus_hostscan(self,host):
-        url = self.url_ach+'host/'
+        url = f'{self.url_ach}host/'
         data = urllib.parse.urlencode({
             'host' : host,
             })
         return self.request_get(url, data)
 
     def urlhaus_urlscan(self,url):
-        endpoint_url = self.url_ach+'url/'
+        endpoint_url = f'{self.url_ach}url/'
         data = urllib.parse.urlencode({
             'url' : url,
             })
         return self.request_get(endpoint_url, data)
 
     def urlhaus_scan(self,hash):
-        url = self.url_ach+'payload/'
+        url = f'{self.url_ach}payload/'
         data = urllib.parse.urlencode({
             'sha256_hash' : hash,
             })

@@ -70,15 +70,13 @@ class APT_Intelligence:
     def pulse_recursion_url(self, pulse_id, visit_list, level ):
         if level == self.depth:
             print('max depth is reached, returning')
-            return
         elif pulse_id in visit_list:
             print('pulse is encountered before, returning')
-            return
         else:
             visit_list.append(pulse_id)
             pulse_detail = self.otx.get_pulse_details(pulse_id)
             print(pulse_id, '-',pulse_detail['adversary'],'-' ,pulse_detail['tags'])
-            
+
             if pulse_detail['tags']:
                 self.tag_list = self.tag_list + pulse_detail['tags']
 
@@ -92,7 +90,8 @@ class APT_Intelligence:
                         for j in new_pulses:
                             if j['id'] not in visit_list:
                                 self.pulse_recursion_url(j['id'], visit_list, level+1)
-            return
+
+        return
 ####################################################################
 
 
@@ -103,7 +102,7 @@ class APT_Intelligence:
         for i in pulses:
             if i['adversary']:
                 advlst.append(i['adversary'])
-            
+
             indicators = self.otx.get_pulse_indicators(i['id'])
             count = 0
             for j in indicators:
@@ -112,9 +111,7 @@ class APT_Intelligence:
                 count += 1
                 try:
                     new_pulses = alienvault_interface.get_hash_pulses(j['indicator'])
-                    for k in new_pulses:
-                        if k['adversary']:
-                            advlst.append(k['adversary'])       
+                    advlst.extend(k['adversary'] for k in new_pulses if k['adversary'])
                 except:
                     pass
         return list(set(advlst))
@@ -124,15 +121,13 @@ class APT_Intelligence:
     def pulse_recursion(self, pulse_id, visit_list, level ):
         if level == self.depth:
             print('max depth is reached, returning')
-            return
         elif pulse_id in visit_list:
             print('pulse is encountered before, returning')
-            return
         else:
             visit_list.append(pulse_id)
             pulse_detail = self.otx.get_pulse_details(pulse_id)
             print(pulse_id, '-',pulse_detail['adversary'],'-' ,pulse_detail['tags'])
-            
+
             if pulse_detail['tags']:
                 self.tag_list = self.tag_list + pulse_detail['tags']
 
@@ -149,7 +144,8 @@ class APT_Intelligence:
                         for j in new_pulses:
                             if j['id'] not in visit_list:
                                 self.pulse_recursion(j['id'], visit_list, level+1)
-            return
+
+        return
                             
 
 
@@ -174,8 +170,7 @@ class APT_Intelligence:
         advlst = []
         for i in pulses:
             if i['attack_ids']:
-                for j in i['attack_ids']:
-                    advlst.append((j['id'], ' - ', j['name']))
+                advlst.extend((j['id'], ' - ', j['name']) for j in i['attack_ids'])
         return advlst
 
     def AlienVault_TTPs_forURL(self, mal_url):
@@ -183,9 +178,7 @@ class APT_Intelligence:
         advlst = []
         for i in pulses:
             if i['attack_ids']:
-                for j in i['attack_ids']:
-                    advlst.append((j['id'], ' - ', j['name']))
-          
+                advlst.extend((j['id'], ' - ', j['name']) for j in i['attack_ids'])
         return advlst
 
     def malwarebazaar_tags_intel(self, urlhash):
@@ -198,7 +191,7 @@ class APT_Intelligence:
                     for key,value in j.items():
                         if key == 'tags':
                             tags = tags + value
-                        if key == 'vendor_intel':
+                        elif key == 'vendor_intel':
                             intel.update(value)
         return tags,intel 
 

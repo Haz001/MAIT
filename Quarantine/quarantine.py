@@ -9,10 +9,10 @@ import os, random, struct
 
 def encrypt_file( key, in_filename, out_filename=None, chunksize=64*1024):
     if not out_filename:
-        out_filename = in_filename + '.enc'
+        out_filename = f'{in_filename}.enc'
 
     iv = 'This is an IV456'.encode("utf8")
-    
+
     encryptor = AES.new(key, AES.MODE_CBC, iv )
     filesize = os.path.getsize(in_filename)
 
@@ -59,5 +59,5 @@ def inject_new_section(url, sha256name):
     # append new section to structures
     pe.sections.append(new_section)
     pe.__structures__.append(new_section)
-    pe.write('./Disposal/'+sha256name+'.quarantine')
+    pe.write(f'./Disposal/{sha256name}.quarantine')
     pe.close()

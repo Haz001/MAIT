@@ -92,12 +92,16 @@ def list_qfiles():
 @app.route('/api/v1/quarantine/<path:path>/', methods=['GET'])
 @auth.login_required
 def quarantine_file(path):
-    path = UPLOAD_DIRECTORY+ '/'+path
+    path = f'{UPLOAD_DIRECTORY}/{path}'
     s = analysis.Static(path)
     urlhash = s.hash_256()
     #quarantine.inject_new_section(path, urlhash)
     #quarantine.encrypt_file('infected_by_MAIT'.encode("utf8"), in_filename='./Disposal/'+urlhash+'.quarantine', out_filename='./Disposal/'+urlhash+'.enc.quarantine')
-    quarantine.encrypt_file('infected_by_MAIT'.encode("utf8"), in_filename=path, out_filename='./Disposal/'+urlhash+'.enc.quarantine')
+    quarantine.encrypt_file(
+        'infected_by_MAIT'.encode("utf8"),
+        in_filename=path,
+        out_filename=f'./Disposal/{urlhash}.enc.quarantine',
+    )
     #Find way to close file in quarantine
     os.remove(path)
     #os.remove('./Disposal/'+urlhash+'.quarantine')     
@@ -110,10 +114,9 @@ def quarantine_file(path):
 @auth.login_required
 def post_file():
     """Upload a file."""
-    print(str(request.files))
-    files = request.files['upload_file']
-    filename = files.filename
-    if files:
+    print(request.files)
+    if files := request.files['upload_file']:
+        filename = files.filename
         files.save(os.path.join(UPLOAD_DIRECTORY, filename))
         file_size = os.path.getsize(os.path.join(UPLOAD_DIRECTORY, filename))
         response=jsonify(name=filename, size=file_size)
@@ -131,7 +134,7 @@ def get_file(path):
 @auth.login_required
 def static_get_analysis(path):
     """Return the headers from static analysis"""
-    path = UPLOAD_DIRECTORY+ '/'+path
+    path = f'{UPLOAD_DIRECTORY}/{path}'
     s = analysis.Static(path)
     summary = s.get_headers()
     urlhash = s.hash_256()
@@ -150,11 +153,11 @@ def static_get_analysis(path):
 def dynamic_get_report(path):
     d = cuckoo_interface.Dynamic()
     da = Dynamic_Extraction.DynamicAnalysis()###
-    path = UPLOAD_DIRECTORY+ '/'+path
+    path = f'{UPLOAD_DIRECTORY}/{path}'
     task_id = d.submit_file(path)
     while d.is_finished(task_id) == False:
     	time.sleep(30)
-    
+
     if d.is_finished(task_id):
         report = d.get_report(task_id)
         summary = d.get_summary(report)
@@ -167,10 +170,8 @@ def dynamic_get_report(path):
         dropped = d.get_dropped_files(report)
         signatures = d.get_signatures(report)
 
-        ttp_report_file = open('ttps.json', 'w') #TODO: Test this - for adding dynamic cuckoo ttps to alienvault ttps for attack mapping 
-        ttp_report_file.write(json.dumps({'ttps': ttps})) #
-        ttp_report_file.close() #
-
+        with open('ttps.json', 'w') as ttp_report_file:
+            ttp_report_file.write(json.dumps({'ttps': ttps})) #
         #response = jsonify(summary = summary, apicalls = apicalls, ttps = ttps, network = network, drop=dropped, signatures=signatures, dynamic_iocs=dynamic_iocs)
         response = jsonify(summary = summary, apicalls = apicalls, ttps = ttps, network = network, drop=dropped, signatures=signatures)
         response.headers.add('Access-Control-Allow-Origin', '*')
@@ -180,13 +181,13 @@ def dynamic_get_report(path):
 @app.route('/api/v1/cti/<path:path>/analysis/', methods=['GET'])
 @auth.login_required
 def cti_get_report(path):
-    path = UPLOAD_DIRECTORY+ '/'+path
+    path = f'{UPLOAD_DIRECTORY}/{path}'
     s = analysis.Static(path)
     apt_intel = apt_intelligence.APT_Intelligence()
     chrono_intel = chrono_intelligence.Chrono_Intelligence()
 
     urlhash = s.hash_256()
-    
+
     attrb = apt_intel.find_apt_name(urlhash)
     ttps = apt_intel.AlienVault_TTPs(urlhash)
     tags, intel = apt_intel.malwarebazaar_tags_intel(urlhash)
@@ -214,14 +215,11 @@ def cti_get_hashreport(path):
 @app.route('/api/v1/attacknav/<path:path>/', methods=['GET'])
 def cti_get_mitre_mapping(path):
     nav = create_nav.Create_Nav()
-    path = UPLOAD_DIRECTORY+ '/'+path
+    path = f'{UPLOAD_DIRECTORY}/{path}'
     s = analysis.Static(path)
     urlhash = s.hash_256()
-    #urlhash = 'c874dd4a471fb101f8d019efbcf5b849d4575c36b479aea3d0ab54ad8ad6d164'
-    f = open('attack_template.json')
-    template = json.loads(f.read())
-    f.close()
-
+    with open('attack_template.json') as f:
+        template = json.loads(f.read())
     config = configparser.ConfigParser()
     config.read(CONFIG_DIRECTORY)
     template['versions']['layer'] = config['MitreAtt&ck']['attack_layer_version']
@@ -229,10 +227,8 @@ def cti_get_mitre_mapping(path):
     template['versions']['navigator'] = config['MitreAtt&ck']['attack_navigator_version']
 
 
-    cuckoo_ttps_file = open('ttps.json') 
-    cuckoo_ttps = nav.get_cuckoo_ttps(json.loads(cuckoo_ttps_file.read()))
-    cuckoo_ttps_file.close() #    
-    
+    with open('ttps.json') as cuckoo_ttps_file:
+        cuckoo_ttps = nav.get_cuckoo_ttps(json.loads(cuckoo_ttps_file.read()))
     lst = nav.AlienVault_TTPs(urlhash) + cuckoo_ttps
 
     #retrieve and update
@@ -247,7 +243,7 @@ def cti_get_mitre_mapping(path):
 @app.route('/api/v1/urlipintelligence/<path:path>/ioc/', methods=['GET'])
 @auth.login_required
 def cti_get_url_ip_iocs(path):
-    path = UPLOAD_DIRECTORY+ '/'+path
+    path = f'{UPLOAD_DIRECTORY}/{path}'
     sa = Static_Extraction.StaticAnalysis(file_path = path)
     da = Dynamic_Extraction.DynamicAnalysis(file_path = path)
     extracted_iocs_report = json.loads('{"extracted_indicators":{'+sa.get_static_indicators()+', '+da.get_dynamic_indicators()+'}}')
@@ -324,10 +320,8 @@ def submit_to_ews():
     user = config['EWS']['username']
     password = config['EWS']['password']
 
-    f = open('ticket_template.json')
-    template = json.loads(f.read())
-    f.close()    
-
+    with open('ticket_template.json') as f:
+        template = json.loads(f.read())
     data = json.loads(request.data)
     for i in data:
         if i['name'] == 'filename':
@@ -347,8 +341,8 @@ def submit_to_ews():
     print(template['ticketAttributes'])
     template['ticketAttributes'][1]['value']['values'] = [str(pri)]
 
-    path = UPLOAD_DIRECTORY+ '/'+path
-    
+    path = f'{UPLOAD_DIRECTORY}/{path}'
+
     s = analysis.Static(path)
     summary = s.get_headers()
     urlhash = s.hash_256()
@@ -360,11 +354,8 @@ def submit_to_ews():
     strings =  s.get_strings()
     static = jsonify(summary = summary, sha256 = urlhash, imphash = imphash, impfuzzy = impfuzzy, libraries = lib, network = net, sections = sec, strings =strings)
     to_save = pprint.pformat(static.json)
-    f = open('static.json', 'w')
-    print(to_save, file=f)
-    f.close()
-
-
+    with open('static.json', 'w') as f:
+        print(to_save, file=f)
     apt_intel = apt_intelligence.APT_Intelligence()
     chrono_intel = chrono_intelligence.Chrono_Intelligence()
 
@@ -376,10 +367,8 @@ def submit_to_ews():
     cti = jsonify(attribution = attrb, ttps = ttps, tags = tags, intel = intel, first_seen = chronos1, vt_dates = chronos2)
 
     to_save_cti = pprint.pformat(cti.json)
-    f = open('cti.json', 'w')
-    print(to_save_cti, file=f)
-    f.close()
-
+    with open('cti.json', 'w') as f:
+        print(to_save_cti, file=f)
     d = cuckoo_interface.Dynamic()
     task_id = d.submit_file(path)
     while d.is_finished(task_id) == False:
@@ -393,51 +382,64 @@ def submit_to_ews():
         dropped = d.get_dropped_files(report)
         signatures = d.get_signatures(report)
         dynamic = jsonify(summary = summary, apicalls = apicalls, ttps = ttps, network = network, drop=dropped, signatures=signatures)
-    
+
     to_save_dynamic = pprint.pformat(dynamic.json)
-    f = open('dynamic.json', 'w')
-    print(to_save_dynamic, file=f)
-    f.close()
-    
+    with open('dynamic.json', 'w') as f:
+        print(to_save_dynamic, file=f)
     #Create a ticket and attach the report
-    url = ewsdir+"api/sdk/cybertickets/"
+    url = f"{ewsdir}api/sdk/cybertickets/"
     headers = {'Content-Type': 'application/json'}
     response = requests.request('POST', url, headers = headers, data = json.dumps(template), auth=HTTPBasicAuth(user, password))
     print(response.text.encode('utf-8'))
     ticket_id = response.json()['id']
-    
+
     with open('static.json', 'rb') as f:
-        r = requests.request('POST',ewsdir+'api/sdk/files/', files={'static.json': f},auth=HTTPBasicAuth(user, password))
-    
+        r = requests.request(
+            'POST',
+            f'{ewsdir}api/sdk/files/',
+            files={'static.json': f},
+            auth=HTTPBasicAuth(user, password),
+        )
+
     fresource = r.json()
-    url = ewsdir+"api/sdk/cybertickets/"+ticket_id+'/attachments'
+    url = f"{ewsdir}api/sdk/cybertickets/{ticket_id}/attachments"
     headers = {'Content-Type': 'application/json'}
     attach_desc = "Static Analysis File"
     payload = {"description":attach_desc, "fileResource": fresource }
     response = requests.request('POST', url, headers = headers, data = json.dumps(payload), auth=HTTPBasicAuth(user, password))
-    
+
 
     with open('cti.json', 'rb') as f:
-        r = requests.request('POST',ewsdir+'api/sdk/files/', files={'cti.json': f},auth=HTTPBasicAuth(user, password))
-    
+        r = requests.request(
+            'POST',
+            f'{ewsdir}api/sdk/files/',
+            files={'cti.json': f},
+            auth=HTTPBasicAuth(user, password),
+        )
+
     fresource = r.json()
-    url = ewsdir+"api/sdk/cybertickets/"+ticket_id+'/attachments'
+    url = f"{ewsdir}api/sdk/cybertickets/{ticket_id}/attachments"
     headers = {'Content-Type': 'application/json'}
     attach_desc = "CTI Analysis File"
     payload = {"description":attach_desc, "fileResource": fresource }
     response = requests.request('POST', url, headers = headers, data = json.dumps(payload), auth=HTTPBasicAuth(user, password))
-    
+
 
     with open('dynamic.json', 'rb') as f:
-        r = requests.request('POST', ewsdir+'api/sdk/files/', files={'dynamic.json': f},auth=HTTPBasicAuth(user, password))
-    
+        r = requests.request(
+            'POST',
+            f'{ewsdir}api/sdk/files/',
+            files={'dynamic.json': f},
+            auth=HTTPBasicAuth(user, password),
+        )
+
     fresource = r.json()
-    url = ewsdir+"api/sdk/cybertickets/"+ticket_id+'/attachments'
+    url = f"{ewsdir}api/sdk/cybertickets/{ticket_id}/attachments"
     headers = {'Content-Type': 'application/json'}
     attach_desc = "dynamic Analysis File"
     payload = {"description":attach_desc, "fileResource": fresource }
     response = requests.request('POST', url, headers = headers, data = json.dumps(payload), auth=HTTPBasicAuth(user, password))
-    
+
     response = jsonify('{success:true}')
     response.headers.add('Access-Control-Allow-Origin', '*')
     return response

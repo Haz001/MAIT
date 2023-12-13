@@ -15,9 +15,7 @@ class IP_CTI():
 
     #Get VirusTotal v2 IP address scan results
     def get_ip_scan_results(self): 
-        virustotal_v2_ip_report = self.vti.virustotal_query_ip(self.ip)
-        
-        return virustotal_v2_ip_report
+        return self.vti.virustotal_query_ip(self.ip)
 
     #Gets the antivirus results from VirusTotal for the extracted IP address
     def get_virustotal_score(self): 
@@ -35,9 +33,14 @@ class IP_CTI():
         hostname_resolutions = []
         try: 
             ip_address_report = self.vti.virustotal_v3_query_ip(self.ip, "/resolutions")[0]["data"]
-            for i in range(0, len(ip_address_report)): 
-                hostname_resolutions.append({'date': ip_address_report[i]["attributes"]["date"], 'hostname': ip_address_report[i]["attributes"]["host_name"], 'resolver': ip_address_report[i]["attributes"]["resolver"]})
-
+            hostname_resolutions.extend(
+                {
+                    'date': ip_address_report[i]["attributes"]["date"],
+                    'hostname': ip_address_report[i]["attributes"]["host_name"],
+                    'resolver': ip_address_report[i]["attributes"]["resolver"],
+                }
+                for i in range(0, len(ip_address_report))
+            )
             hostname_resolutions = json.loads('{"hostname_resolutions":'+json.dumps(hostname_resolutions)+'}')
         except: 
             return json.loads('{"hostname_resolutions": {"error_occurred": '+json.dumps(self.ip_scan_results)+'}}')
@@ -50,8 +53,9 @@ class IP_CTI():
         try:
             whois_info = self.vti.virustotal_v3_query_ip(self.ip, "/historical_whois")
             whois_info = whois_info[0]["data"]
-            for i in range(0, len(whois_info)): 
-                historical_whois.append(whois_info[i]["attributes"])
+            historical_whois.extend(
+                whois_info[i]["attributes"] for i in range(0, len(whois_info))
+            )
             latest_whois = whois_info[0]["attributes"]
 
             whois_info = json.loads('{"whois_information": {"latest_whois":'+json.dumps(latest_whois)+', "historical_whois":'+json.dumps(historical_whois)+'}}')
@@ -85,10 +89,16 @@ class IP_CTI():
                 detected_communicating_samples = '{"error_occurred": "No detected communicating samples"}'
         except: 
             return json.loads('{"related_malicious_files": {"error_occurred": '+json.dumps(malicious_files)+'}}')
-        
-        related_malicious_files = json.loads('{"related_malicious_files": {"detected_downloaded_files":'+detected_downloaded_samples+', "detected_referrer_files":'+detected_referrer_samples+', "detected_communicating_files":'+detected_communicating_samples+'}}')
 
-        return related_malicious_files
+        return json.loads(
+            '{"related_malicious_files": {"detected_downloaded_files":'
+            + detected_downloaded_samples
+            + ', "detected_referrer_files":'
+            + detected_referrer_samples
+            + ', "detected_communicating_files":'
+            + detected_communicating_samples
+            + '}}'
+        )
 
     #Gets potentially malicious URLs that are associated with the given IP address
     def get_related_malicious_urls(self): 
@@ -98,9 +108,7 @@ class IP_CTI():
         except:
             return json.loads('{"related_malicious_urls": {"error_occurred": '+detected_urls+'}}')
 
-        related_malicious_urls = json.loads('{"related_malicious_urls":'+detected_urls+'}')
-
-        return related_malicious_urls
+        return json.loads('{"related_malicious_urls":'+detected_urls+'}')
 
     #Gets historical SSL certificates for the given IP address
     def get_historical_ssl_certs(self): 
@@ -116,7 +124,7 @@ class IP_CTI():
     #Gets geolocation information for the extracted IP address (longitude and latitude primarily)
     def get_ip_geolocation(self): 
         try: 
-            response = urllib.request.urlopen("https://ipwhois.app/json/"+self.ip)
+            response = urllib.request.urlopen(f"https://ipwhois.app/json/{self.ip}")
             ipgeolocation = json.load(response)
             ip_proxy_info = self.get_ip_proxy_info()
 
@@ -132,7 +140,9 @@ class IP_CTI():
         config.read('./config.txt')
         key = config['Ip2proxy']['API_KEY']
         try:
-            response = requests.get('https://api.ip2proxy.com/?ip=' + self.ip + '&key=' + key + '&package=PX10').json()
+            response = requests.get(
+                f'https://api.ip2proxy.com/?ip={self.ip}&key={key}&package=PX10'
+            ).json()
         except Exception as error: 
             return json.dumps('{"lastSeen": '+'{0}\n'.format(error)+', "proxyType": "NA", "threat": "NA", "isProxy": "NA"}')
 
@@ -147,9 +157,16 @@ class IP_CTI():
             except: 
                 indicator_report = self.avi.get_related_pulse_indicators(self.ip, 'IPv6')
 
-            for i in range(0, len(indicator_report)): 
-                ip_indicators.append({'pulse_id': indicator_report[i]['pulse_key'], 'indicator_id': indicator_report[i]['id'], 'indicator': indicator_report[i]['indicator'], 'type': indicator_report[i]['type'], 'created_date': indicator_report[i]['created']})
-
+            ip_indicators.extend(
+                {
+                    'pulse_id': indicator_report[i]['pulse_key'],
+                    'indicator_id': indicator_report[i]['id'],
+                    'indicator': indicator_report[i]['indicator'],
+                    'type': indicator_report[i]['type'],
+                    'created_date': indicator_report[i]['created'],
+                }
+                for i in range(0, len(indicator_report))
+            )
             ip_indicators = json.loads('{"related_indicators_of_ip_address":'+json.dumps(ip_indicators)+'}')
         except Exception as error:
             return json.loads('{"related_indicators_of_ip_address": {"error_occurred": '+json.dumps('{0}'.format(error))+'}}')
@@ -159,19 +176,25 @@ class IP_CTI():
     #Gets information about related pulses such as threat group for the given IPv4 or IPv6 address
     def get_related_ip_pulse_info(self): 
         try: 
-            ip_pulse_info = []
             try: 
                 pulse_report = self.avi.get_related_pulse_report(self.ip, 'IPv6')
             except: 
                 pulse_report = self.avi.get_related_pulse_report(self.ip, 'IPv4')
 
-            for k in range(0, len(pulse_report)): 
-                ip_pulse_info.append({'Id': pulse_report[k]['id'], 'Name': pulse_report[k]['name'], 'Adversary': pulse_report[k]['adversary'], 'Attack IDs': pulse_report[k]['attack_ids'], 'Tags': pulse_report[k]['tags']})
-
+            ip_pulse_info = [
+                {
+                    'Id': pulse_report[k]['id'],
+                    'Name': pulse_report[k]['name'],
+                    'Adversary': pulse_report[k]['adversary'],
+                    'Attack IDs': pulse_report[k]['attack_ids'],
+                    'Tags': pulse_report[k]['tags'],
+                }
+                for k in range(0, len(pulse_report))
+            ]
             ip_pulse_info = json.loads('{"related_pulses_of_ip_address":'+json.dumps(ip_pulse_info)+'}')
         except Exception as error:
             return json.loads('{"related_pulses_of_ip_address": {"error_occurred": '+json.dumps('{0}'.format(error))+'}}')
-            
+
         return ip_pulse_info
 
     #Gets IP address threat intelligence from grey noise such as if it is malicious and threat actor

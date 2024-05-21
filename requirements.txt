@@ -17,6 +17,6 @@ pymongo==4.0
 python_docx==0.8.11
 python_magic==0.4.25
 r2pipe==1.6.5
-requests==2.22.0
+requests==2.32.0
 tldextract==2.2.2
 urllib3==1.25.8

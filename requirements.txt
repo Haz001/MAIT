@@ -19,4 +19,4 @@ python_magic==0.4.25
 r2pipe==1.6.5
 requests==2.22.0
 tldextract==2.2.2
-urllib3==1.25.8
+urllib3==1.26.19

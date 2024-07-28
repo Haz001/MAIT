@@ -11,12 +11,14 @@ pdfminer==20191125
 pe==0.3.2
 pefile==2021.9.3
 py2neo==2021.2.3
-pycryptodome==3.14.1
+pycryptodome==3.19.1
 pyimpfuzzy==0.5
-pymongo==4.0
+pymongo==4.6.3
 python_docx==0.8.11
 python_magic==0.4.25
 r2pipe==1.6.5
-requests==2.22.0
+requests==2.32.2
 tldextract==2.2.2
-urllib3==1.25.8
+urllib3==1.26.19
+idna>=3.7 # not directly required, pinned by Snyk to avoid a vulnerability
+zipp>=3.19.1 # not directly required, pinned by Snyk to avoid a vulnerability
